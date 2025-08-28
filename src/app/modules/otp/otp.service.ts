@@ -30,6 +30,7 @@ const sendOTP = async (email: string, name: string , role: string) => {
     if (user.isVerified) {
         throw new AppError(401, "You are already verified")
     }
+    
     const otp = generateOtp();
 
     const redisKey = `otp:${email}`

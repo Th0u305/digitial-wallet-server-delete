@@ -9,7 +9,7 @@ const DbModel = async (role:string) => {
      // eslint-disable-next-line @typescript-eslint/no-explicit-any
        let Model: Model<any>;
 
-        switch (role.toUpperCase()) {
+        switch (role?.toUpperCase()) {
         case 'USER':
             Model = User;
             break;
