@@ -50,8 +50,10 @@ const transactionHistory = catchAsync( async( req:Request, res:Response)=>{
         success: true,
         statusCode : httpStatus.OK,
         message : "Successfully retrieved transaction history",
-        data : result.data,
-        meta : result.count
+        data : {
+            data : result.data,
+            meta : result.count
+        },
     })
 })
 

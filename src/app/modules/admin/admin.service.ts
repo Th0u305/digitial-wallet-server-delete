@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import mongoose, { Model, PipelineStage } from "mongoose";
 import { Agent } from "../agent/agent.model"
 import { User } from "../user/user.model"
@@ -11,39 +12,60 @@ import { WalletStatus } from "../wallet/wallet.interface";
 
 const querySchema = z.object({
     view: z.enum(['user', 'agent', 'wallet', 'transaction']).default("user"),
-    filterBy: z.enum(['wallet', 'transaction', 'all']).optional().default("wallet"),
+    filterBy: z.enum(['wallet', 'transaction']).optional().default("wallet"),
     walletStatus: z.enum(["BLOCKED", "ACTIVE", "SUSPENDED"]).optional().default('ACTIVE'),
     isVerified: z.string().default("true").optional(),
     sortBy: z.string().optional().default('createdAt'),
+    search: z.string().optional(),
     sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
     limit: z.preprocess(val => parseInt(String(val), 10) || 10, z.number().min(1)),
     page: z.preprocess(val => parseInt(String(val), 10) || 1, z.number().min(1)),
 });
 
 
-
 export const getAggregatedData = async (req: Request) => {
 
+    // --- 2. Validate and parse queries using the Zod schema ---
     const validatedQuery = querySchema.parse(req.query);
-
-    const { view, filterBy, sortBy, sortOrder, limit, page, isVerified, walletStatus } = validatedQuery;
-
+    const { view, filterBy, sortBy, sortOrder, limit, page, walletStatus, isVerified, search } = validatedQuery;
     const skip = (page - 1) * limit;
- 
-    
-    // eslint-disable-next-line @typescript-eslint/consistent-indexed-object-style, @typescript-eslint/no-explicit-any
+
+    // --- 3. Select the base model dynamically ---
+    // eslint-disable-next-line @typescript-eslint/consistent-indexed-object-style
     const modelMap: { [key: string]: Model<any> } = {
         user: User,
         agent: Agent,
         wallet: Wallet,
         transaction: Transaction,
     };
-    const Model = modelMap[view as string];
+    const Model = modelMap[view];
 
-
+    // --- 4. Build the aggregation pipeline dynamically ---
     const pipeline: PipelineStage[] = [];
 
+    // --- ADD SEARCH AND FILTER STAGE EARLY ---
+    const matchStage: Record<string, any> = {};
 
+    // Add search filter for name and email
+    if (search) {
+        matchStage.$or = [
+            { name: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } },
+        ];
+    }
+
+    // Add isVerified filter
+    if (isVerified) {
+        matchStage.isVerified = isVerified === 'false' ? false : true;
+    }
+
+    // Only push the initial match stage if there are filters to apply at this point
+    if (Object.keys(matchStage).length > 0) {
+        pipeline.push({ $match: matchStage });
+    }
+
+
+    // Add wallet and transaction lookups only when necessary
     if (view === 'user' || view === 'agent') {
         pipeline.push(
             {
@@ -54,13 +76,30 @@ export const getAggregatedData = async (req: Request) => {
                     as: 'walletData',
                 },
             },
-            { $unwind: { path: '$walletData', preserveNullAndEmptyArrays: true } }
-        );
-        pipeline.push(
+            { $unwind: { path: '$walletData', preserveNullAndEmptyArrays: true } },
             {
-                $match : { "isVerified" : isVerified === "false" ? false : true }
+                $project : {
+                    password : 0
+                }
             }
-        )
+        );
+
+        // Add walletStatus filter AFTER the wallet data is available
+        if (walletStatus) {
+            pipeline.push({ $match: { 'walletData.walletStatus': walletStatus } });
+        }
+
+        if (filterBy === "transaction") {
+            pipeline.push(
+                {
+                    $addFields : {
+                        walletBalance : "$walletData.balance",
+                        walletStatus : "$walletData.walletStatus"
+                    }
+                },
+            )
+        }
+
         pipeline.push(
             {
                 $lookup: {
@@ -75,33 +114,6 @@ export const getAggregatedData = async (req: Request) => {
                     transactionCount : { $size : "$allTransactions"}
                 }
             }
-        );
-
-        
-        // pipeline.push(
-        //     {
-        //         $match : { "walletData.walletStatus" : walletStatus}  /// filter match by walletStatus
-        //     }
-        // )
-
-        pipeline.push(
-            {
-                $project : {
-                    password : 0
-                }
-            }
-        )
-        pipeline.push(
-            {
-                $addFields : {
-                    walletStatus : "$walletData.walletStatus"
-                }
-            },
-        )
-        pipeline.push(
-            {
-                $match : { "walletStatus" : walletStatus}  /// filter match by walletStatus
-            }
         )
     } else if (view === 'wallet') {
         pipeline.push(
@@ -113,15 +125,10 @@ export const getAggregatedData = async (req: Request) => {
                     as: 'allTransactions',
                 },
             },
-            {
-                $addFields : {
-                    transactionCount : { $size : "$allTransactions"}
-                }
-            },
-        );
+        )
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // --- 5. Add a projection stage to conditionally remove data ---
     const projectStage: Record<string, any> = {};
     if (filterBy === 'wallet') {
         projectStage.allTransactions = 0; // Hide transactions
@@ -134,20 +141,19 @@ export const getAggregatedData = async (req: Request) => {
         pipeline.push({ $project: projectStage });
     }
 
+    // --- 6. Use $facet to get both data and total count in one query ---
     pipeline.push({
         $facet: {
-            // First pipeline: get metadata (total count)
             metadata: [{ $count: 'total' }],
-            // Second pipeline: get the actual paginated data
             data: [
-                // { $sort: { [sortBy as string]: sortOrder === 'asc' ? 1 : -1 } },
-                { $sort: { [sortBy as string]: sortOrder === 'asc' ? 1 : -1 } },
+                { $sort: { [sortBy]: sortOrder === 'asc' ? 1 : -1 } },
                 { $skip: skip },
-                { $limit: limit || 10 },
+                { $limit: limit },
             ],
         },
-    });
+    })
 
+    // --- 7. Execute the pipeline ---
     const result = await Model.aggregate(pipeline);
 
     const data = result[0].data;
@@ -159,9 +165,11 @@ export const getAggregatedData = async (req: Request) => {
             limit,
             total,
         },
+        queries: validatedQuery,
         data,
     };
 };
+
 
 const walletAction = async (action : string , userId: string) => {
     
@@ -199,7 +207,6 @@ const walletAction = async (action : string , userId: string) => {
     
         return isWallet
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error:any) {
 
         await session.abortTransaction()

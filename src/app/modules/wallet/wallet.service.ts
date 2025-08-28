@@ -156,7 +156,7 @@ const sendMoney = async (paramsId : string , amount : number , transType : strin
     }
 
     if (!receiverUser) {
-        throw new AppError (httpStatus.NOT_FOUND, "Receiver account doesn't exists")
+        throw new AppError (httpStatus.NOT_FOUND, "Wrong email address")
     }
     if (!receiverWallet) {
         throw new AppError(httpStatus.NOT_FOUND, 'Wallet error')
