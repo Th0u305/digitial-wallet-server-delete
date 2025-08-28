@@ -13,7 +13,10 @@ const transporter = nodemailer.createTransport({
         pass: envVars.SMTP_PASS
     },
     port: Number(envVars.SMTP_PORT),
-    host: envVars.SMTP_HOST
+    host: envVars.SMTP_HOST,
+    tls : {
+        rejectUnauthorized : false
+    }
 })
 
 interface SendEmailOptions {
