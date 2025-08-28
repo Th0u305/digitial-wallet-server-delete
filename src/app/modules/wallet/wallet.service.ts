@@ -166,14 +166,16 @@ const sendMoney = async (paramsId : string , amount : number , transType : strin
         throw new AppError(httpStatus.FORBIDDEN, `Receiver account is ${receiverWallet.walletStatus?.toLocaleLowerCase()} . Please consult with admin`)
     }
 
-    if (transType !== TransactionType.SEND_MONEY && transType !== TransactionType.CASH_IN) {
-        throw new AppError(httpStatus.FORBIDDEN, "You cannot perform this action")
-    }
 
     const session = await mongoose.startSession();
 
     try {
         session.startTransaction();
+
+        if (transType !== TransactionType.SEND_MONEY && transType !== TransactionType.CASH_IN && transType !== TransactionType.CASH_OUT) {
+            throw new AppError(httpStatus.FORBIDDEN, "You cannot perform this action")
+        }
+        
 
         if (senderWallet.balance < amount) {
             return { success: false, message: 'Insufficient funds for this operation.' }
