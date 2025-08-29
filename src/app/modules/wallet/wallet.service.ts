@@ -291,7 +291,7 @@ const cashOut = async (paramsId : string , amount : number , transType : string 
         
 
         if (customerWallet.balance < amount) {
-            return { success: false, message: 'Customer have funds to cash out' }
+            return { success: false, message: "Customer doesn't have funds to cash out" }
         }
         customerWallet.balance -= amount;
         const randomId = genTransactionId()
