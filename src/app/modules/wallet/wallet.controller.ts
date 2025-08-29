@@ -44,7 +44,7 @@ const cashOut = catchAsync( async (req: Request, res:Response)=>{
     const decodedToken = req.user
     const { amount , transactionType } = req.body
 
-    const result = await WalletService.sendMoney(paramsId, amount, transactionType , decodedToken as JwtPayload)
+    const result = await WalletService.cashOut(paramsId, amount, transactionType , decodedToken as JwtPayload)
 
     sendResponse(res,{
         success : result?.success === false ? false : true,
