@@ -14,4 +14,5 @@ export interface IWallet {
   transactionId? : Types.ObjectId[],
   message?: string
   success?: string
+  walletId?: string,
 }

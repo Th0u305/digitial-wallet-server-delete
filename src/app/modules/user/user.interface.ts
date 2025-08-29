@@ -34,4 +34,5 @@ export interface IUser {
     role : Role,
     message?: string
     success?: string
+    transactionId? : Types.ObjectId[],
 }

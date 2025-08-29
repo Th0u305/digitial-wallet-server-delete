@@ -30,9 +30,9 @@ const sendMoney = catchAsync( async (req: Request, res:Response)=>{
     const result = await WalletService.sendMoney(paramsId, amount, transactionType , decodedToken as JwtPayload)
 
     sendResponse(res,{
-        success : result.success === false ? false : true,
-        statusCode : result.success === false ? httpStatus.BAD_REQUEST : httpStatus.OK,
-        message : result.message ? result.message : "Successfully send money",
+        success : result?.success === false ? false : true,
+        statusCode : result?.success === false ? httpStatus.BAD_REQUEST : httpStatus.OK,
+        message : result?.message ? result?.message : "Successfully send money",
         data : result
     })
 })

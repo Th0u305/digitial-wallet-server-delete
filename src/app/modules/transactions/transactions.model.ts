@@ -42,7 +42,7 @@ const transactionSchema = new Schema<ITransaction>(
     },
     walletId: {
       type: String, 
-      required: [true, 'Wallet ID is required for a transaction.'],
+      // required: [true, 'Wallet ID is required for a transaction.'],
     //   index: true,
     },
     userModel : {
