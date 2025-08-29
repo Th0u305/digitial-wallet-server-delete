@@ -1,5 +1,4 @@
 import crypto from "crypto";
-import { sendEmail } from "../../utils/sendEmail";
 import { User } from "../user/user.model";
 import AppError from "../../errorHelper/AppError";
 import { redisClient } from "../../config/redis.config";
@@ -17,7 +16,7 @@ const generateOtp = (length = 6) => {
     return otp
 }
 
-const sendOTP = async (email: string, name: string , role: string) => {
+const sendOTP = async (email: string,  role: string) => {
 
     const Model = await DbModel(role)
 
@@ -42,15 +41,7 @@ const sendOTP = async (email: string, name: string , role: string) => {
         }
     })
 
-    await sendEmail({
-        to: email,
-        subject: "Your OTP Code",
-        templateName: "otp",
-        templateData: {
-            name: name,
-            otp: otp
-        }
-    })
+    return otp
 };
 
 const verifyOTP = async (email: string, otp: string, role: string) => {

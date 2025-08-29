@@ -5,7 +5,6 @@ import jwt,  { JwtPayload } from "jsonwebtoken";
 import { Encrypt } from "../../utils/encrypt";
 import { IAuthProvider, IsActive } from "../user/user.interface";
 import { envVars } from "../../config/env";
-import { sendEmail } from "../../utils/sendEmail";
 import DbModel from "../../utils/DbModel";
 import { Agent } from "../agent/agent.model";
 
@@ -101,15 +100,7 @@ const forgotPassword = async (email: string) => {
 
     const resetUILink = `${envVars.FRONTEND_URL}/reset-password?id=${isUserExist._id}&token=${resetToken}`
 
-    sendEmail({
-        to: isUserExist.email,
-        subject: "Password Reset",
-        templateName: "forgetPassword",
-        templateData: {
-            name: isUserExist.name,
-            resetUILink
-        }
-    })
+    return resetUILink
 
     /**
      * http://localhost:5173/reset-password?id=687f310c724151eb2fcf0c41&token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2ODdmMzEwYzcyNDE1MWViMmZjZjBjNDEiLCJlbWFpbCI6InNhbWluaXNyYXI2QGdtYWlsLmNvbSIsInJvbGUiOiJVU0VSIiwiaWF0IjoxNzUzMTY2MTM3LCJleHAiOjE3NTMxNjY3Mzd9.LQgXBmyBpEPpAQyPjDNPL4m2xLF4XomfUPfoxeG0MKg

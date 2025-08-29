@@ -139,15 +139,15 @@ const setPassword = catchAsync( async ( req: Request, res: Response, next : Next
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const forgotPassword = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
 
-    const { email } = req.body;
+    const { email } = req.query;
 
-    await AuthServices.forgotPassword(email);
+    const result = await AuthServices.forgotPassword(email as string);
 
     sendResponse(res, {
         success: true,
         statusCode: httpStatus.OK,
         message: "Email Sent Successfully",
-        data: null,
+        data: result,
     })
 })
 
