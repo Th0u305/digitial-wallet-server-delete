@@ -109,7 +109,7 @@ const moneyActions = async (payload: Partial<ITransaction>, decodedToken: JwtPay
     }    
 }
 
-// agent send money to any & user "CASH_OUT" ,"SEND_MONEY"
+// agent send money to any & user,"SEND_MONEY"
 const sendMoney = async (paramsId : string , amount : number , transType : string , decodedToken : JwtPayload) =>{
 
     if (!paramsId) {
@@ -172,7 +172,7 @@ const sendMoney = async (paramsId : string , amount : number , transType : strin
     try {
         session.startTransaction();
 
-        if (transType !== TransactionType.SEND_MONEY && transType !== TransactionType.CASH_IN && transType !== TransactionType.CASH_OUT) {
+        if (transType !== TransactionType.SEND_MONEY && transType !== TransactionType.CASH_IN) {
             throw new AppError(httpStatus.FORBIDDEN, "You cannot perform this action")
         }
         
@@ -210,6 +210,119 @@ const sendMoney = async (paramsId : string , amount : number , transType : strin
         
         await senderWallet.save({session})
         await receiverWallet.save({session})
+
+        await session.commitTransaction()
+
+        return transactionData
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error:any) {
+
+        await session.abortTransaction()
+        return { success: false, message:  `Transaction failed: ${error.message}` }
+        
+    }finally{
+        session.endSession()
+    }
+}
+
+// "CASH_OUT" 
+const cashOut = async (paramsId : string , amount : number , transType : string , decodedToken : JwtPayload) =>{
+
+    if (!paramsId) {
+        throw new AppError(httpStatus.NOT_FOUND, "Id missing")
+    }
+    if (!amount) {
+        throw new AppError(httpStatus.NOT_FOUND, "Amount is missing")   
+    }
+    if (!transType) {
+        throw new AppError(httpStatus.NOT_FOUND, "TransactionType is missing")   
+    }
+
+    if (transType !== TransactionType.CASH_OUT) {
+        throw new AppError(httpStatus.FORBIDDEN, "You cannot perform this action")
+    }
+
+    const Model = await DbModel(decodedToken.role)
+
+    const agent = await Model.findById(decodedToken._id) 
+    let customer = await User.findOne({email : paramsId}) 
+    
+    if (!agent) {
+        throw new AppError (httpStatus.NOT_FOUND, "This user account doesn't exists")
+    }
+    
+    if (!customer) {
+        customer = await Agent.findOne({email : paramsId}) 
+    }
+
+    const agentWallet = await Wallet.findById(agent?.walletId)
+    const customerWallet = await Wallet.findById(customer?.walletId)
+
+
+    if (!agentWallet) {
+        throw new AppError(httpStatus.NOT_FOUND, 'Wallet error')
+    }
+
+    if (agentWallet.walletStatus !== WalletStatus.ACTIVE) {
+        throw new AppError(httpStatus.FORBIDDEN, `Your account is ${agentWallet.walletStatus?.toLocaleLowerCase()} . Please consult with admin`)
+    }
+
+    if (!customer) {
+        throw new AppError (httpStatus.NOT_FOUND, "Wrong email address")
+    }
+    if (!customerWallet) {
+        throw new AppError(httpStatus.NOT_FOUND, 'Wallet error')
+    }
+
+    if (customerWallet.walletStatus !== WalletStatus.ACTIVE) {
+        throw new AppError(httpStatus.FORBIDDEN, `Customer account is ${customerWallet.walletStatus?.toLocaleLowerCase()} . Please consult with admin`)
+    }
+
+
+    const session = await mongoose.startSession();
+
+    try {
+        session.startTransaction();
+
+        if (transType !== TransactionType.CASH_OUT) {
+            throw new AppError(httpStatus.FORBIDDEN, "You cannot perform this action")
+        }
+        
+
+        if (customerWallet.balance < amount) {
+            return { success: false, message: 'Customer have funds to cash out' }
+        }
+        customerWallet.balance -= amount;
+        const randomId = genTransactionId()
+
+        
+        const transactionData = new Transaction(
+            {
+                userId : customer._id,
+                walletId : customerWallet.walletId,
+                userModel : customer.role.toLowerCase(),
+                amount : amount,
+                status : PAYMENT_STATUS.COMPLETED,
+                transactionType : transType,
+                transactionId : randomId,
+                sendMoney : {
+                    amount : amount,
+                    receiverId : agent._id,
+                    senderId : customer._id,
+                    senderRole : customer.role,
+                    message :  `An ${customer.role.toLowerCase()} Successfully ${transType.toLocaleLowerCase()} ${amount} money from ${agent.role.toLowerCase()}`
+                }
+            }
+        )
+
+        await transactionData.save({session})
+
+        agent.balance += amount
+        customerWallet.transactionId?.push(transactionData._id)
+        
+        await customerWallet.save({session})
+        await agentWallet.save({session})
 
         await session.commitTransaction()
 
@@ -324,5 +437,6 @@ export const WalletService = {
     moneyActions,
     sendMoney,
     transactionHistory,
-    getInfo
+    getInfo,
+    cashOut
 }

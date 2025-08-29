@@ -37,6 +37,23 @@ const sendMoney = catchAsync( async (req: Request, res:Response)=>{
     })
 })
 
+// send money 
+const cashOut = catchAsync( async (req: Request, res:Response)=>{
+
+    const paramsId = req.params.id
+    const decodedToken = req.user
+    const { amount , transactionType } = req.body
+
+    const result = await WalletService.sendMoney(paramsId, amount, transactionType , decodedToken as JwtPayload)
+
+    sendResponse(res,{
+        success : result?.success === false ? false : true,
+        statusCode : result?.success === false ? httpStatus.BAD_REQUEST : httpStatus.OK,
+        message : result?.message ? result?.message : "Successfully send money",
+        data : result
+    })
+})
+
 // view transaction history
 const transactionHistory = catchAsync( async( req:Request, res:Response)=>{
 
@@ -75,5 +92,6 @@ export const WalletController = {
     moneyActions,
     sendMoney,
     transactionHistory,
-    getInfo
+    getInfo,
+    cashOut
 }
