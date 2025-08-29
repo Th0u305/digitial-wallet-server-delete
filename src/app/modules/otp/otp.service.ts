@@ -2,7 +2,6 @@ import crypto from "crypto";
 import AppError from "../../errorHelper/AppError";
 import { redisClient } from "../../config/redis.config";
 import DbModel from "../../utils/DbModel";
-import { sendEmail } from "../../utils/sendEmail";
 
 
 const OTP_EXPIRATION = 2 * 60 // 2minute
@@ -16,7 +15,7 @@ const generateOtp = (length = 6) => {
     return otp
 }
 
-const sendOTP = async (email: string, name: string , role: string) => {
+const sendOTP = async (email: string,  role: string) => {
 
     const Model = await DbModel(role)
 
@@ -29,6 +28,7 @@ const sendOTP = async (email: string, name: string , role: string) => {
     if (user.isVerified) {
         throw new AppError(401, "You are already verified")
     }
+    
     const otp = generateOtp();
 
     const redisKey = `otp:${email}`
@@ -40,15 +40,7 @@ const sendOTP = async (email: string, name: string , role: string) => {
         }
     })
 
-    await sendEmail({
-        to: email,
-        subject: "Your OTP Code",
-        templateName: "otp",
-        templateData: {
-            name: name,
-            otp: otp
-        }
-    })
+    return otp
 };
 
 const verifyOTP = async (email: string, otp: string, role: string) => {

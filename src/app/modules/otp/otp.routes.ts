@@ -4,6 +4,6 @@ import { OTPController } from "./otp.controller";
 
 export const OtpRoutes = express.Router();
 
-OtpRoutes.post("/send", OTPController.sendOTP);
+OtpRoutes.get("/send", OTPController.sendOTP);
 OtpRoutes.post("/verify", OTPController.verifyOTP);
 
