@@ -7,14 +7,14 @@ import AppError from "../errorHelper/AppError";
 
 const transporter = nodemailer.createTransport({
     // port: envVars.EMAIL_SENDER.SMTP_PORT,
+    host: envVars.SMTP_HOST,
+    port: Number(envVars.SMTP_PORT),
     secure: false,
-    service : "gmail" ,
+    // service : envVars.SMTP_HOST ,
     auth: {
         user: envVars.SMTP_USER,
         pass: envVars.SMTP_PASS
     },
-    port: Number(envVars.SMTP_PORT),
-    host: envVars.SMTP_HOST
 })
 
 interface SendEmailOptions {
@@ -57,7 +57,7 @@ export const sendEmail = async ({
         
         // eslint-disable-next-line no-console
         console.log("email sending error", error.message);
-        throw new AppError(401, "Email error")
+        throw new AppError(401, "Email error", error)
     }
 
 }

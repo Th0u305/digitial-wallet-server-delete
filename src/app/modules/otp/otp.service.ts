@@ -1,4 +1,6 @@
 import crypto from "crypto";
+import { sendEmail } from "../../utils/sendEmail";
+import { User } from "../user/user.model";
 import AppError from "../../errorHelper/AppError";
 import { redisClient } from "../../config/redis.config";
 import DbModel from "../../utils/DbModel";
@@ -15,7 +17,7 @@ const generateOtp = (length = 6) => {
     return otp
 }
 
-const sendOTP = async (email: string,  role: string) => {
+const sendOTP = async (email: string, name: string , role: string) => {
 
     const Model = await DbModel(role)
 
@@ -40,13 +42,22 @@ const sendOTP = async (email: string,  role: string) => {
         }
     })
 
-    return otp
+    await sendEmail({
+        to: email,
+        subject: "Your OTP Code",
+        templateName: "otp",
+        templateData: {
+            name: name,
+            otp: otp
+        }
+    })
 };
 
 const verifyOTP = async (email: string, otp: string, role: string) => {
 
     const Model = await DbModel(role)
-    const user = await Model.findOne({email})
+
+    const user = await Model.findOne({ email })
 
     if (!user) {
         throw new AppError(404, "User not found")
@@ -59,7 +70,7 @@ const verifyOTP = async (email: string, otp: string, role: string) => {
     const redisKey = `otp:${email}`
 
     const savedOtp = await redisClient.get(redisKey)
- 
+
     if (!savedOtp) {
         throw new AppError(401, "Invalid OTP");
     }
@@ -68,9 +79,11 @@ const verifyOTP = async (email: string, otp: string, role: string) => {
         throw new AppError(401, "Invalid OTP");
     }
 
-    user.isVerified = true
-    await user.save()
-    redisClient.del([redisKey])
+
+    await Promise.all([
+        User.updateOne({ email }, { isVerified: true }, { runValidators: true }),
+        redisClient.del([redisKey])
+    ])
 
 };
 
