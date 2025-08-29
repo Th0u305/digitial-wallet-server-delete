@@ -7,15 +7,18 @@ import AppError from "../errorHelper/AppError";
 
 const transporter = nodemailer.createTransport({
     // port: envVars.EMAIL_SENDER.SMTP_PORT,
-    host: envVars.SMTP_HOST,
+    // host: envVars.SMTP_HOST,
     port: Number(envVars.SMTP_PORT),
     secure: false,
-    // service : envVars.SMTP_HOST ,
+    service : "gmail" ,
     auth: {
         user: envVars.SMTP_USER,
         pass: envVars.SMTP_PASS
     },
+    
 })
+console.log(333);
+
 
 interface SendEmailOptions {
     to: string,
@@ -28,6 +31,7 @@ interface SendEmailOptions {
         contentType: string
     }[]
 }
+console.log(4444);
 
 export const sendEmail = async ({
     to,
@@ -38,9 +42,13 @@ export const sendEmail = async ({
 }: SendEmailOptions) => {
     try {
         const templatePath = path.join(__dirname, `templates/${templateName}.ejs`)
+        console.log(1);
+        
         // const html = await ejs.renderFile(templatePath, templateData)
             const html = `<h1>Hello!</h1><p>Your OTP is: ${templateData?.otp} </p>
             <p> This code is only valid for 2 minute </p>`;
+            console.log(2);
+            
         await transporter.sendMail({
             from: envVars.SMTP_FROM,
             to: to,
