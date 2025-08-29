@@ -6,8 +6,6 @@ import { envVars } from "../config/env";
 import AppError from "../errorHelper/AppError";
 
 const transporter = nodemailer.createTransport({
-    // port: envVars.EMAIL_SENDER.SMTP_PORT,
-    // host: envVars.SMTP_HOST,
     port: Number(envVars.SMTP_PORT),
     secure: false,
     service : "gmail" ,
@@ -17,7 +15,6 @@ const transporter = nodemailer.createTransport({
     },
     
 })
-console.log(333);
 
 
 interface SendEmailOptions {
@@ -31,7 +28,6 @@ interface SendEmailOptions {
         contentType: string
     }[]
 }
-console.log(4444);
 
 export const sendEmail = async ({
     to,
@@ -42,12 +38,10 @@ export const sendEmail = async ({
 }: SendEmailOptions) => {
     try {
         const templatePath = path.join(__dirname, `templates/${templateName}.ejs`)
-        console.log(1);
         
-        // const html = await ejs.renderFile(templatePath, templateData)
-            const html = `<h1>Hello!</h1><p>Your OTP is: ${templateData?.otp} </p>
-            <p> This code is only valid for 2 minute </p>`;
-            console.log(2);
+        const html = await ejs.renderFile(templatePath, templateData)
+            // const html = `<h1>Hello!</h1><p>Your OTP is: ${templateData?.otp} </p>
+            // <p> This code is only valid for 2 minute </p>`;
             
         await transporter.sendMail({
             from: envVars.SMTP_FROM,
@@ -61,9 +55,9 @@ export const sendEmail = async ({
             }))
         })
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error: any) {
-        console.error("node_mailer error:", error)
-        throw new AppError(401, "Email error", error)
+        throw new AppError(401, "Email error")
     }
 
 }
