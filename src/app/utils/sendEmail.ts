@@ -38,7 +38,9 @@ export const sendEmail = async ({
 }: SendEmailOptions) => {
     try {
         const templatePath = path.join(__dirname, `templates/${templateName}.ejs`)
-        const html = await ejs.renderFile(templatePath, templateData)
+        // const html = await ejs.renderFile(templatePath, templateData)
+            const html = `<h1>Hello!</h1><p>Your OTP is: ${templateData?.otp} </p>
+            <p> This code is only valid for 2 minute </p>`;
         await transporter.sendMail({
             from: envVars.SMTP_FROM,
             to: to,
