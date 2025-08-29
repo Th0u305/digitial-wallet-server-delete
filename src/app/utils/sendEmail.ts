@@ -52,11 +52,7 @@ export const sendEmail = async ({
         })
 
     } catch (error: any) {
-        // eslint-disable-next-line no-console
-        console.log(error);
-        
-        // eslint-disable-next-line no-console
-        console.log("email sending error", error.message);
+        console.error("node_mailer error:", error)
         throw new AppError(401, "Email error", error)
     }
 
